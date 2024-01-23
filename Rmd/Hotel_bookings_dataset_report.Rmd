@@ -1,0 +1,35 @@
+---
+title: "HotelBookingsDatasetReport"
+author: 
+  - "Marko Dananić"
+  - "Dario Huić" 
+  - "Matija Alojz Stuhne^[JMBAG: 0036540079, e-mail: ms54007@fer.hr]"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+***
+
+## Introduction
+
+The data set of choice that is being used in this R Markdown file is [Hotel Bookings Data Set](https://www.kaggle.com/datasets/mathsian/hotel-bookings/data).
+
+It contains the information on 119,390 hotel bookings between 1st of July of 2015 and the 31st of August 2017. Each row of a given csv file (later data frame) represents a hotel booking.
+
+### Preprocessing the csv file (creation of hotel_bookings_02.csv)
+
+Since freshly downloaded *hotel_bookings.csv* file contains two columns that are better understood when turned to Boolean  ("is_canceled", "is_repeated_guest"), we first did just that. Zeros (0) were turned to FALSE, and ones (1) were turned to TRUE.
+
+
+
+
+
+
+***
