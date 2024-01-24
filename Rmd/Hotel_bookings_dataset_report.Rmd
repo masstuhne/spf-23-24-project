@@ -123,4 +123,114 @@ ggsave("../figures/revenue_by_month.png")
 
 ```
 
+### Top 10 Countries with Highest bookings
+
+```{r}
+total_bookings_per_country <- table(hotel_bookings$country)
+
+top_countries <- as.data.frame(total_bookings_per_country)
+top_countries <- top_countries[order(-top_countries$Freq), ]
+top_10_countries <- head(top_countries, 10)
+
+top_10_countries$Var1 <- factor(top_10_countries$Var1, levels = top_10_countries$Var1)
+
+ggplot(top_10_countries, aes(x = Var1, y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Country",
+       y = "Number of bookings",
+       fill = "Country") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("../figures/top_10_countries_with_highest_bookings.png")
+```
+
+### Duration trend for each hotel type
+
+```{r}
+filtered_data <- hotel_bookings %>%
+  filter(stays_in_week_nights %in% c(1,3,4,5,6,7,8))
+
+ggplot(filtered_data, aes(x = factor(stays_in_week_nights), fill = hotel)) +
+  geom_bar(position = "dodge", stat = "count") +
+  labs(x = "Number of nights",
+       y = "Count",
+       fill = "Hotel type") +scale_y_continuous(breaks = seq(0, 22000, by = 2000))+
+  theme_minimal()
+
+ggsave("../figures/druation_trend_for_each_hotel_type.png")
+```
+
+
+### Cancellation percentages for each type of hotel
+```{r}
+
+cancellation_rates <- hotel_bookings %>%
+  group_by(hotel, is_canceled) %>%
+  summarise(count = n()) %>%
+  group_by(hotel) %>%
+  mutate(cancelation_rate = count / sum(count) * 100)
+
+ggplot(cancellation_rates, aes(x = hotel, y = cancelation_rate, fill = as.factor(is_canceled))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs( x = "Hotel Type",
+       y = "Cancellation Rate (%)",
+       fill = "Cancelled") +
+  scale_y_continuous(breaks = seq(0, 100, by = 20), limits = c(0, 100)) +
+  theme_minimal()
+
+ggsave("../figures/cancellations_for_each_hotel_type.png")
+```
+
+### Percentage of repeated guests for each hotel
+```{r}
+repeated_guest_percentage <- hotel_bookings %>%
+  group_by(hotel, is_repeated_guest) %>%
+  summarise(count = n()) %>%
+  group_by(hotel) %>%
+  mutate(percentage = count / sum(count) * 100) %>%
+  filter(is_repeated_guest == 1)  
+
+ggplot(repeated_guest_percentage, aes(x = percentage, y = hotel, fill = as.factor(is_repeated_guest))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Percentage of repeated guests",
+       y = "Hotel") +
+  theme_minimal() +
+  scale_fill_manual(values = c("#9999FF"), guide = "none") +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)),
+            position = position_stack(vjust = 0.5)) 
+
+ggsave("../figures/percentage_of_repeated_guests.png")
+```
+
+
+### Distribution of customers type that mostly make bookings
+```{r}
+customer_type_counts <- hotel_bookings %>%
+  group_by(customer_type) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+label_threshold <- 3
+
+ggplot(customer_type_counts, aes(x = "", y = count, fill = customer_type)) +
+  geom_bar(stat = "identity", position = "fill", color = "white", width = 1) +
+  geom_text(data = filter(customer_type_counts, percentage >= label_threshold),
+            aes(label = sprintf("%.1f%%", percentage), y = count / 2),
+            position = position_fill(vjust = 0.5)) +
+  coord_polar("y") +
+  theme_void() +
+  theme(legend.position = "right") +
+  labs(fill = "Customer type")
+
+ggsave("../figures/distribution_of_customers_type.png")
+```
+
+
+
+
+
+
+
+
 ***
