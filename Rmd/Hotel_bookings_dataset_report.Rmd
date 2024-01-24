@@ -12,6 +12,11 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+
+source("../R/preprocess_dataframe.R")
+source("../R/useful_functions.R")
 ```
 
 
@@ -19,17 +24,103 @@ library(tidyverse)
 
 ## Introduction
 
-The data set of choice that is being used in this R Markdown file is [Hotel Bookings Data Set](https://www.kaggle.com/datasets/mathsian/hotel-bookings/data).
+The data set of choice that is being used in this R Markdown file is [Hotel Bookings data set](https://www.kaggle.com/datasets/mathsian/hotel-bookings/data).
 
 It contains the information on 119,390 hotel bookings between 1st of July of 2015 and the 31st of August 2017. Each row of a given csv file (later data frame) represents a hotel booking.
 
-### Preprocessing the csv file (creation of hotel_bookings_02.csv)
+
+### Preprocessing the csv file
 
 Since freshly downloaded *hotel_bookings.csv* file contains two columns that are better understood when turned to Boolean  ("is_canceled", "is_repeated_guest"), we first did just that. Zeros (0) were turned to FALSE, and ones (1) were turned to TRUE.
 
 
+### Preprocessing the dataframe
+
+```{r}
+hotel_bookings <- read_csv("../data/hotel_bookings_02.csv", show_col_types = FALSE)
+```
+```{r}
+hotel_bookings$arrival_date_month <- custom_order_months(hotel_bookings$arrival_date_month)
+```
 
 
 
+### Basic info
+
+```{r}
+glimpse(hotel_bookings)
+head(hotel_bookings)
+```
+
+## Exploratory data analysis
+
+
+### Peak period for hotel reservations
+
+
+```{r}
+num_per_month <- hotel_bookings %>% count(arrival_date_month)
+
+ggplot(num_per_month, aes(x = arrival_date_month, y = n)) + 
+  geom_col(fill = "#3489eb", alpha = 0.7) +
+  geom_text(aes(label = n), vjust = -0.5, size = 3) +
+  labs(x = "month of arrival", y = "number of people")
+ggsave("../figures/arrivals_per_month.png")
+```
+
+As we can see from the graph, the peak period for hotel reservations is summer, especially the months of July and August.
+
+
+### Average duration of stay
+
+```{r}
+avg_stay_per_month <- hotel_bookings %>% group_by(arrival_date_month) %>%
+                      summarise(average_stay = mean(stays_in_week_nights + stays_in_weekend_nights)) %>% 
+                      arrange(average_stay)
+
+ggplot(avg_stay_per_month, aes(x = average_stay, y = arrival_date_month)) + 
+  geom_col(fill = "#3489eb", alpha = 0.7) +
+  geom_text(aes(label =round(average_stay, 2)), hjust = -0.5, size = 3) +
+  labs(y = "month of arrival", x = "average stay / number of nights")
+ggsave("../figures/average_stay_per_month.png")
+```
+
+The graph shows us that the guests stayed the longest during the summer months.
+
+
+### Revenue per month
+
+Using similar filter patterns as till now, we can estimate the monthly revenue (per hotel).
+
+```{r}
+revenue_per_month <- hotel_bookings %>%
+                     select(hotel, adr, arrival_date_year, arrival_date_month, stays_in_weekend_nights,                            stays_in_week_nights) %>% 
+                     filter(adr > 0) %>% 
+                     group_by(arrival_date_year, arrival_date_month, hotel) %>% 
+                     summarise(average_stay = mean(stays_in_weekend_nights + stays_in_week_nights),                           average_adr = mean(adr), num_of_res = n(), est_revenue = average_stay * average_adr                      * num_of_res) %>%
+                     select(hotel, arrival_date_year, arrival_date_month, est_revenue)
+                    
+# revenue_per_month_15 <- subset(revenue_per_month, arrival_date_year == 2015)
+# revenue_per_month_16 <- subset(revenue_per_month, arrival_date_year == 2016)
+# revenue_per_month_17 <- subset(revenue_per_month, arrival_date_year == 2017)
+
+# graph_15 <- create_revenue_per_month_graph(revenue_per_month_15, "2015")
+# graph_16 <- create_revenue_per_month_graph(revenue_per_month_16, "2016")
+# graph_17 <- create_revenue_per_month_graph(revenue_per_month_17, "2017")
+
+# grid.arrange(graph_15, graph_16, graph_17)
+
+ggplot(revenue_per_month, aes(x = arrival_date_year,
+                              y = est_revenue, fill = hotel)) +
+         geom_bar(stat = "identity", position = "dodge") +
+         #geom_text(aes(label =round(est_revenue, 2)), size = 2, position = position_stack(vjust = 0.5), angle = 90) +
+         labs(x = NULL, y = "revenue / $") +
+         facet_wrap(. ~ arrival_date_month) +
+         theme(axis.text.x = element_text(angle = 45)) +
+         scale_fill_manual(values = c("#3489eb","#EB9634"))
+
+ggsave("../figures/revenue_by_month.png")
+
+```
 
 ***
