@@ -1,9 +1,9 @@
 ---
 title: "Hotel Bookings Dataset Report"
 author:
-- "Marko Dananić^[JMBAG: 0036541487, e-mail: md54148@fer.hr]"
-- "Dario Huić^[JMBAG: 0036538469, e-mail: dario.huic@fer.hr]"
-- "Matija Alojz Stuhne^[JMBAG: 0036540079, e-mail: ms54007@fer.hr]"
+- "Marko Dananić [JMBAG: 0036541487, e-mail: md54148@fer.hr]"
+- "Dario Huić [JMBAG: 0036538469, e-mail: dario.huic@fer.hr]"
+- "Matija Alojz Stuhne [JMBAG: 0036540079, e-mail: ms54007@fer.hr]"
 date: "`r Sys.Date()`"
 output:
   pdf_document: default
