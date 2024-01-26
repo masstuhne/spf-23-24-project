@@ -1,7 +1,7 @@
 ---
 title: "Hotel Bookings Dataset Report"
 author:
-- "Marko Dananić^[JMBAG: jmbag_ovde, e-mail: fer@mail.ovdje]"
+- "Marko Dananić^[JMBAG: 0036541487, e-mail: md54148@fer.hr]"
 - "Dario Huić^[JMBAG: 0036538469, e-mail: dario.huic@fer.hr]"
 - "Matija Alojz Stuhne^[JMBAG: 0036540079, e-mail: ms54007@fer.hr]"
 date: "`r Sys.Date()`"
@@ -229,7 +229,8 @@ Utvrdili smo da je najveći broj gostiju iz Portugala, što je i očekivano s ob
 
 ### Karta svijeta s ukupnim brojem gostiju
 
--- opis
+Na ovom grafu prikazat ćemo raspodjelu broja gostiju u hotelima na karti svijeta. Podaci su grupirani prema zemljama, a boje na karti označavaju ukupan broj gostiju (odrasli + djeca + bebe). Što je boja intezivnija broj gostiju je veći.
+
 ```{r}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
@@ -266,11 +267,12 @@ ggplot(hotel_bookings_map) +
 ```{r echo=FALSE, warning = FALSE, message = FALSE}
 ggsave("../figures/heatmap_of_the_world_with_guest_count.png")
 ```
--- zakljucak
 
-### Duration trend for each hotel type
+Kao što vidimo najintezivnija crvena boja je u Portugalu i okolnim zemljama što znači da najveći broj gostiju dolazi iz tog područja kao što smo već i ranije zaključili. Kod zemalja Afrike boja je žuta ili čak siva što znači da od tamo dolazi najmanje gostiju. Sva siva područja označavaju zemlje iz kojih hoteli još nisu imali goste.
 
--- opis
+### Trend odsjedanja za svaki tip hotela
+
+Analizom podataka o broju noćenja dobivamo uvid u to koliko su noći gosti boravili u kojem hotelu. Ovaj graf pruža pregled raspodjele broja noćenja u hotelima za određene duljine boravka.
 
 ```{r}
 filtered_data <- hotel_bookings %>%
@@ -286,15 +288,16 @@ ggplot(filtered_data, aes(x = factor(stays_in_week_nights), fill = hotel)) +
 
 ```
 
-
--- zakljucak
+Utvrdili smo da najviše odsjedanja na jednu noć ima u gradskom hotelu što je i za očekivati jer u gradu uvijek ima putnika koji traže smještaj samo na jednu noć kao naprimjer između letova ili poslovni ljudi koji dolaze na sastanak.Također vidimo da se ističe boravak od 5 noći u hotelu u resortu što ima i smisla jer je 5 noći taman dovoljno ljudima koji su došli na neki kraći odmor.
 
 ```{r echo=FALSE, warning = FALSE, message = FALSE}
 ggsave("../figures/duration_trend_for_each_hotel_type.png")
 ```
 
-### Cancellation percentages for each type of hotel
--- opis
+### Postotci otkazivanja po tipu hotela
+
+Na ovom grafu prikazat ćemo stope otkazivanja. Podaci su grupirani po tipu hotela, a zatim su izračunate stope otkazivanja u postotcima.
+
 ```{r}
 
 cancellation_rates <- hotel_bookings %>%
@@ -313,14 +316,16 @@ ggplot(cancellation_rates, aes(x = hotel, y = cancelation_rate, fill = as.factor
 
 
 ```
+Kao što možemo vidjeti u gradskom hotelu nije neka prevelika razlika u stopama otkazivanja, otprilike 40% ljudi koji rezerviraju hotel ga i otkažu dok oko 60% ljudi zapravo odsjeda u hotelu nakon što ga rezerviraju. Velika razlika se može primjetiti kod otkazivanja hotela u resortu. Manje od 30% ljudi koji rezerviraju hotel ga i otkažu što znači da više od 70% ljudi odsjeda u hotelu nakon što ga i rezerviraju što je i logično jer se hotel u resortu rezervira na više dana kao odmor i ako je već sve isplanirano unaprijed to se rijetko otkazuje.
 
--- zakljucak
+
 ```{r echo=FALSE, warning = FALSE, message = FALSE}
 ggsave("../figures/cancellations_for_each_hotel_type.png")
 ```
-### Percentage of repeated guests for each hotel
 
--- opis
+### Postotak ponovljenih gostiju po hotelu
+
+Ovdje želimo prikazati postotak ponovljenih gostiju. Podaci su grupirani prema tipu hotela, a zatim su izračunati postotci gostiju koji su odsjedali u hotelu više puta.
 
 ```{r}
 repeated_guest_percentage <- hotel_bookings %>%
@@ -340,15 +345,16 @@ ggplot(repeated_guest_percentage, aes(x = percentage, y = hotel, fill = as.facto
             position = position_stack(vjust = 0.5)) 
 
 ```
+Možemo zaključiti da je veći postotak ponovljenih gostiju u hotelu u resortu jer ako negdje dolaziš na odmor i svidi ti se okolina i ljudi vratit ćeš se tamo ponovo na odmor dok je često hotel u gradu usputna stanica te se tamo ne moraš više vratiti.
 
---zakljucak
 ```{r echo=FALSE, warning = FALSE, message = FALSE}
 ggsave("../figures/percentage_of_repeated_guests.png")
 ```
 
-### Distribution of customers type that mostly make bookings
+### Distribucija tipova gostiju
 
--- opis
+Želimo saznati kakva je podjela različitih tipova gostiju u hotelima. Podaci su grupirani prema tipu gosta, a zatim su izračuanti postotci za svaki tip.
+
 ```{r}
 customer_type_counts <- hotel_bookings %>%
   group_by(customer_type) %>%
@@ -375,6 +381,6 @@ ggplot(customer_type_counts, aes(x = "", y = count, fill = customer_type)) +
 ggsave("../figures/distribution_of_customers_type.png")
 ```
 
-
+Kao što možemo vidjeti vodeći su gosti u prolazu (Transient guest) koji čine 75%, zatim sa 21% su gosti koji rezerviraju hotel sami za sebe (Transient - Party) bilo to na recepciji ili online, ali ne preko agencije ili neke treće strane. S manjim postotcima tu su i gosti koji dolaze preko ugovora ili grupno.
 
 ***
