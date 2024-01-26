@@ -80,9 +80,10 @@ As we can see from the graph, the peak period for hotel reservations is summer, 
 ### Average duration of stay
 
 ```{r}
-avg_stay_per_month <- hotel_bookings %>% group_by(arrival_date_month) %>%
-                      summarise(average_stay = mean(stays_in_week_nights + stays_in_weekend_nights)) %>% 
-                      arrange(average_stay)
+avg_stay_per_month <- hotel_bookings %>% 
+  group_by(arrival_date_month) %>%
+  summarise(average_stay = mean(stays_in_week_nights + stays_in_weekend_nights)) %>% 
+  arrange(average_stay)
 
 ggplot(avg_stay_per_month, aes(x = average_stay, y = arrival_date_month)) + 
   geom_col(fill = "#3489eb", alpha = 0.7) +
@@ -99,27 +100,19 @@ The graph shows us that the guests stayed the longest during the summer months.
 Using similar filter patterns as till now, we can estimate the monthly revenue (per hotel).
 
 ```{r}
-revenue_per_month <- hotel_bookings %>%
-                     select(hotel, adr, arrival_date_year, arrival_date_month, stays_in_weekend_nights,                            stays_in_week_nights) %>% 
-                     filter(adr > 0) %>% 
-                     group_by(arrival_date_year, arrival_date_month, hotel) %>% 
-                     summarise(average_stay = mean(stays_in_weekend_nights + stays_in_week_nights),                           average_adr = mean(adr), num_of_res = n(), est_revenue = average_stay * average_adr                      * num_of_res) %>%
-                     select(hotel, arrival_date_year, arrival_date_month, est_revenue)
-                    
-# revenue_per_month_15 <- subset(revenue_per_month, arrival_date_year == 2015)
-# revenue_per_month_16 <- subset(revenue_per_month, arrival_date_year == 2016)
-# revenue_per_month_17 <- subset(revenue_per_month, arrival_date_year == 2017)
-
-# graph_15 <- create_revenue_per_month_graph(revenue_per_month_15, "2015")
-# graph_16 <- create_revenue_per_month_graph(revenue_per_month_16, "2016")
-# graph_17 <- create_revenue_per_month_graph(revenue_per_month_17, "2017")
-
-# grid.arrange(graph_15, graph_16, graph_17)
+revenue_per_month <- hotel_bookings %>% 
+  select(hotel, adr, arrival_date_year, arrival_date_month, 
+         stays_in_weekend_nights, stays_in_week_nights) %>% 
+  filter(adr > 0) %>% 
+  group_by(arrival_date_year, arrival_date_month, hotel) %>% 
+  summarise(average_stay = mean(stays_in_weekend_nights + stays_in_week_nights), 
+            average_adr = mean(adr), num_of_res = n(), 
+            est_revenue = average_stay * average_adr * num_of_res) %>%
+  select(hotel, arrival_date_year, arrival_date_month, est_revenue)
 
 ggplot(revenue_per_month, aes(x = arrival_date_year,
                               y = est_revenue, fill = hotel)) +
          geom_bar(stat = "identity", position = "dodge") +
-         #geom_text(aes(label =round(est_revenue, 2)), size = 2, position = position_stack(vjust = 0.5), angle = 90) +
          labs(x = NULL, y = "revenue / $") +
          facet_wrap(. ~ arrival_date_month) +
          theme(axis.text.x = element_text(angle = 45)) +
@@ -145,7 +138,7 @@ ggplot(top_10_countries, aes(x = Var1, y = Freq, fill = Var1)) +
   labs(x = "Country",
        y = "Number of bookings",
        fill = "Country") +
-  theme_minimal() +
+  scale_fill_manual(values = c("#3489eb", "#488AD7", "#5D8CC2", "#718DAE", "#858F9A", "#9A9085", "#AE9271", "#C2935D", "#D79548", "#EB9634")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ggsave("../figures/top_10_countries_with_highest_bookings.png")
@@ -153,7 +146,7 @@ ggsave("../figures/top_10_countries_with_highest_bookings.png")
 
 
 
-### Heatmap of the wolrd with total guest count
+### Heatmap of the world with total guest count
 ```{r}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
@@ -198,10 +191,11 @@ ggplot(filtered_data, aes(x = factor(stays_in_week_nights), fill = hotel)) +
   geom_bar(position = "dodge", stat = "count") +
   labs(x = "Number of nights",
        y = "Count",
-       fill = "Hotel type") +scale_y_continuous(breaks = seq(0, 22000, by = 2000))+
-  theme_minimal()
+       fill = "Hotel type") + scale_y_continuous(breaks = seq(0, 22000, by = 2000)) +
+ scale_fill_manual(values = c("#3489eb","#EB9634"))
 
-ggsave("../figures/druation_trend_for_each_hotel_type.png")
+
+ggsave("../figures/duration_trend_for_each_hotel_type.png")
 ```
 
 
@@ -220,7 +214,8 @@ ggplot(cancellation_rates, aes(x = hotel, y = cancelation_rate, fill = as.factor
        y = "Cancellation Rate (%)",
        fill = "Cancelled") +
   scale_y_continuous(breaks = seq(0, 100, by = 20), limits = c(0, 100)) +
-  theme_minimal()
+  scale_fill_manual(values = c("#3489eb","#EB9634"))
+
 
 ggsave("../figures/cancellations_for_each_hotel_type.png")
 ```
@@ -239,7 +234,7 @@ ggplot(repeated_guest_percentage, aes(x = percentage, y = hotel, fill = as.facto
   labs(x = "Percentage of repeated guests",
        y = "Hotel") +
   theme_minimal() +
-  scale_fill_manual(values = c("#9999FF"), guide = "none") +
+  scale_fill_manual(values = c("#3489eb"), guide = "none") +
   geom_text(aes(label = sprintf("%.1f%%", percentage)),
             position = position_stack(vjust = 0.5)) 
 
@@ -264,7 +259,9 @@ ggplot(customer_type_counts, aes(x = "", y = count, fill = customer_type)) +
   coord_polar("y") +
   theme_void() +
   theme(legend.position = "right") +
-  labs(fill = "Customer type")
+  labs(fill = "Customer type") +
+  scale_fill_manual(values = c("#7f5700", "#0049a0", "#3489eb" ,"#EB9634"))
+
 
 ggsave("../figures/distribution_of_customers_type.png")
 ```
