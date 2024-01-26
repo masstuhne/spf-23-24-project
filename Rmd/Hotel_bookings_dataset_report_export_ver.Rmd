@@ -1,0 +1,380 @@
+---
+title: "Hotel Bookings Dataset Report"
+author:
+- "Marko Dananić^[JMBAG: jmbag_ovde, e-mail: fer@mail.ovdje]"
+- "Dario Huić^[JMBAG: 0036538469, e-mail: dario.huic@fer.hr]"
+- "Matija Alojz Stuhne^[JMBAG: 0036540079, e-mail: ms54007@fer.hr]"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(maps)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+
+
+source("../R/preprocess_dataframe.R")
+source("../R/useful_functions.R")
+```
+
+
+
+# Uvod
+
+
+U ovom dokumentu provesti ćemo eksploratornu analizu podataka nad skupom podataka o rezervacijama hotela. Skup podataka preuzet je s Kaggle-a, a može se pronaći na sljedećoj poveznici: [Hotel Bookings data set](https://www.kaggle.com/jessemostipak/hotel-booking-demand).
+
+
+U podatkovnom skupu dani su podaci o dva hotela. Oba hotela nalaze se u Portugalu. Jedan je gradski hotel (City Hotel) koji se nalazi u centru grada Lisabona, a drugi je hotel u odmaralištu (Resort Hotel) koji se nalazi u obližnjoj turističkom regiji Algrave.
+
+
+
+
+### Uređivanje csv datoteke
+
+
+Novo preuzeta *hotel_bookings.csv* datoteka sadrži dva stupaca koja je lakše razumjeti kada se podaci iz tih stupaca pretvore u logičke vrijednosti ("is_canceled", "is_repeated_guest") Nule (0) su pretvorene u FALSE, a jedinice (1) u TRUE.
+
+
+### Učitavanje podataka
+
+```{r}
+hotel_bookings <- read_csv("../data/hotel_bookings_02.csv", show_col_types = FALSE)
+```
+```{r}
+hotel_bookings$arrival_date_month <- custom_order_months(hotel_bookings$arrival_date_month)
+```
+
+
+
+## Opis podatkovnog skupa
+
+Skup podataka sadrži informacije o 119,390 rezervacija hotela između 1. srpnja 2015. i 31. kolovoza 2017. Svaki redak csv datoteke predstavlja jednu rezervaciju hotela.
+
+```{r}
+glimpse(hotel_bookings)
+```
+
+```{r eval=FALSE, echo = FALSE}
+head(hotel_bookings)
+```
+
+Svaka rezervacija hotela sadrži sljedeće informacije:
+
+- **hotel** - hotel u kojem je rezervacija napravljena (H1 = Resort Hotel ili H2 = City Hotel)
+- **is_canceled** - da li je rezervacija otkazana ili ne (1 = otkazana, 0 = nije otkazana)
+- **lead_time** - broj dana između datuma rezervacije i datuma dolaska
+- **arrival_date_year**, **arrival_date_month**, **arrival_date_week_number**, **arrival_date_day_of_month**  - datum dolaska u hotel
+- **stays_in_weekend_nights** - broj noćenja (subota ili nedjelja) koje je gost ostao u hotelu
+- **stays_in_week_nights** - broj noćenja (ponedjeljak do petak) koje je gost ostao u hotelu
+- **adults** - broj odraslih osoba
+- **children** - broj djece
+- **babies** - broj beba
+- **meal** - tip rezervacije (BB - Bed and Breakfast, HB - half board, FB - full board, SC - self catering)
+- **country** - država iz koje je gost došao
+- **market_segment** - segment tržišta (Direct - direktan, Online TA - online putnička agencija, Offline TA/TO - offline putnička agencija, Corporate - korporativno, Groups - grupe)
+- **distribution_channel** - kanal distribucije (TA/TO - putnička agencija, Direct - direktan, Corporate - korporativno, GDS - globalna distribucijska usluga)
+- **is_repeated_guest** - da li je gost već boravio u hotelu (1 = da, 0 = ne)
+- **previous_cancellations** - broj prethodnih otkazivanja rezervacija
+- **previous_bookings_not_canceled** - broj prethodnih rezervacija koje nisu otkazane
+- **reserved_room_type** - tip rezervirane sobe
+- **assigned_room_type** - tip dodijeljene sobe
+- **booking_changes** - broj promjena koje su napravljene u rezervaciji
+- **deposit_type** - tip depozita (No Deposit - nema depozita, Non Refund - nepovratni depozit, Refundable - povratni depozit)
+- **agent** - ID agenta koji je napravio rezervaciju
+- **company** - ID kompanije koja je napravila rezervaciju
+- **days_in_waiting_list** - broj dana koje je rezervacija bila na listi čekanja
+
+
+- **customer_type** - tip rezervacije (Contract - ugovor, Group - grupa, Transient - prolazan, Transient-Party - prolazna grupa)
+- **adr** - prosječna dnevna stopa
+- **required_car_parking_spaces** - broj potrebnih parkirnih mjesta
+- **total_of_special_requests** - broj posebnih zahtjeva
+- **reservation_status** - status rezervacije (Canceled - otkazana, Check-Out - odjava, No-Show - gost nije došao)
+- **reservation_status_date** - datum posljednje promjene statusa rezervacije
+
+
+
+
+
+# Eksploratorna analiza podataka
+
+Provesti ćemo eksploratornu analizu za skup podataka o rezervacijama hotela. Cilj je istražiti podatke i otkriti neke zanimljive činjenice o ponašanju gostiju hotela.
+
+
+
+## Broj rezervacija po mjesecima
+
+Zanima nas kako se broj rezervacija mijenja tijekom godine. Da bismo to saznali, izračunat ćemo broj rezervacija po mjesecima i prikazati ih u obliku histograma.
+
+
+```{r}
+num_per_month <- hotel_bookings %>% count(arrival_date_month)
+
+ggplot(num_per_month, aes(x = arrival_date_month, y = n)) + 
+  geom_col(fill = "#3489eb", alpha = 0.7) +
+  geom_text(aes(label = n), vjust = -0.5, size = 3) +
+  labs(x = "Mjesec dolaska", y = "Broj rezervacija", title = "Broj rezervacija po mjesecima")
+```
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/arrivals_per_month.png")
+```
+
+
+
+Iz grafa možemo izčitati da je najveći broj rezervacija hotela u ljetnim mjesecima, posebno u srpnju i kolovozu. Najmanji broj rezervacija je u prosincu i siječnju, što je i očekivano, s obzirom da je to najhladniji period godine u Europi.
+
+
+### Prosječan broj noćenja po mjesecima
+
+Analizom podataka o prosječnom boravku gostiju po mjesecima dobivamo uvid u to koliko su gosti ostajali u hotelima tijekom godine. Istražiti ćemo i da li postoji razlika u prosječnom boravku gostiju u ljetnim i zimskim mjesecima.
+
+```{r}
+avg_stay_per_month <- hotel_bookings %>% 
+  group_by(arrival_date_month) %>%
+  summarise(average_stay = mean(stays_in_week_nights + stays_in_weekend_nights)) %>% 
+  arrange(average_stay)
+
+ggplot(avg_stay_per_month, aes(x = average_stay, y = arrival_date_month)) + 
+  geom_col(fill = "#3489eb", alpha = 0.7) +
+  geom_text(aes(label =round(average_stay, 2)), hjust = -0.5, size = 3) +
+  labs(y = "Mjesec dolaska", x = "Broj noćenja", title = "Prosječan broj noćenja po mjesecima")
+```
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/average_stay_per_month.png")
+```
+
+Možemo primjetiti da su gosti najduže boravili u hotelima tijekom ljetnih mjeseci, vjerojatno zbog godišnjih odmora i toplijeg vremena. U mjesecu srpnju vidimo vrhunac prosječnog boravka od skoro 4 noćenja po gostu. Kao što je i očekivano, boravak u sijećnju bio je najkraći s manje od 3 noćenja po gostu.
+
+
+
+
+### Prihod po mjesecima
+
+Koristit ćemo slične filtere kao i do sada kako bismo izračunali mjesečni prihod (po hotelu). Očekujemo sličan rezultat prošlim analizama, s obzirom da je prihod direktno povezan s brojem rezervacija i brojem noćenja.
+
+
+
+```{r message=FALSE, echo=FALSE}
+revenue_per_month <- hotel_bookings %>% 
+  select(hotel, adr, arrival_date_year, arrival_date_month, 
+         stays_in_weekend_nights, stays_in_week_nights) %>% 
+  filter(adr > 0) %>% 
+  group_by(arrival_date_year, arrival_date_month, hotel) %>% 
+  summarise(average_stay = mean(stays_in_weekend_nights + stays_in_week_nights), 
+            average_adr = mean(adr), num_of_res = n(), 
+            est_revenue = average_stay * average_adr * num_of_res) %>%
+  select(hotel, arrival_date_year, arrival_date_month, est_revenue)
+
+ggplot(revenue_per_month, aes(x = arrival_date_year,
+                              y = est_revenue, fill = hotel)) +
+         geom_bar(stat = "identity", position = "dodge") +
+         labs(x = NULL, y = "prihod / $") +
+         facet_wrap(. ~ arrival_date_month) +
+         theme(axis.text.x = element_text(angle = 45)) +
+         scale_fill_manual(values = c("#3489eb","#EB9634"))
+
+```
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/revenue_by_month.png")
+```
+
+Uočavamo postepeni rast mjesečnog prihoda tijekom godine, s najvišim prihodom evidentnim u ljetnim mjesecima.
+
+
+### Top 10 zemalja iz kojih dolaze gosti - podrijetla posjetitelja
+
+U ovom dijelu istražit ćemo podrijetlo gostiju, odnosno iz kojih zemalja dolaze. S obzirom da se hoteli nalaze u Portugalu, očekujemo da će većina gostiju biti iz Europe.
+Provedbom ove analize možemo dobiti uvid u to koliko je hotelima važno da se fokusiraju na određene zemlje, odnosno da li je potrebno ulagati u marketing u određenim zemljama.
+
+Koristit ćemo funkciju table() kako bismo izračunali broj rezervacija po zemljama. Zatim ćemo sortirati podatke kako bismo mogli izdvojiti top 10 zemalja iz kojih dolaze gosti.\
+
+
+
+```{r}
+total_bookings_per_country <- table(hotel_bookings$country)
+
+top_countries <- as.data.frame(total_bookings_per_country)
+top_countries <- top_countries[order(-top_countries$Freq), ]
+top_10_countries <- head(top_countries, 10)
+
+top_10_countries$Var1 <- factor(top_10_countries$Var1, levels = top_10_countries$Var1)
+
+ggplot(top_10_countries, aes(x = Var1, y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Country",
+       y = "Number of bookings",
+       fill = "Country") +
+  scale_fill_manual(values = c("#3489eb", "#488AD7", "#5D8CC2", "#718DAE", "#858F9A", "#9A9085", "#AE9271", "#C2935D", "#D79548", "#EB9634")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/top_10_countries_with_highest_bookings.png")
+```
+
+Utvrdili smo da je najveći broj gostiju iz Portugala, što je i očekivano s obzirom da se hoteli nalaze u Portugalu. Zatim slijede gosti iz Velike Britanije, Francuske, Španjolske i Njemačke. Ove zemlje su također u blizini Portugala, što je vjerojatno razlog zašto je broj gostiju iz ovih zemalja visok.
+
+### Karta svijeta s ukupnim brojem gostiju
+
+-- opis
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+hotel_bookings_agg <- hotel_bookings %>%
+  group_by(country) %>%
+  summarise(total_guests = sum(adults + children + babies, na.rm = TRUE))
+
+hotel_bookings_map <- left_join(world, hotel_bookings_agg, by = c("iso_a3" = "country"))
+
+ggplot(hotel_bookings_map) +
+  geom_sf(aes(fill = total_guests), color = "white") +
+  scale_fill_gradient(
+    low = "yellow",
+    high = "red",
+    na.value = "grey90",
+    trans = "log",
+    breaks = c(0, 10, 1000, 5000, 10000, 20000, 25000),
+    labels = c("0", "0 - 10", "10 - 100", "100 - 500", "5,000 - 10,000", "10,000 - 25,000", "25,000+"),
+    guide = guide_legend(title = "Total Number of Guests")
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.border = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  coord_sf(xlim = c(-180, 180), ylim = c(-55, 90))
+
+```
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/heatmap_of_the_world_with_guest_count.png")
+```
+-- zakljucak
+
+### Duration trend for each hotel type
+
+-- opis
+
+```{r}
+filtered_data <- hotel_bookings %>%
+  filter(stays_in_week_nights %in% c(1,3,4,5,6,7,8))
+
+ggplot(filtered_data, aes(x = factor(stays_in_week_nights), fill = hotel)) +
+  geom_bar(position = "dodge", stat = "count") +
+  labs(x = "Number of nights",
+       y = "Count",
+       fill = "Hotel type") + scale_y_continuous(breaks = seq(0, 22000, by = 2000)) +
+ scale_fill_manual(values = c("#3489eb","#EB9634"))
+
+
+```
+
+
+-- zakljucak
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/duration_trend_for_each_hotel_type.png")
+```
+
+### Cancellation percentages for each type of hotel
+-- opis
+```{r}
+
+cancellation_rates <- hotel_bookings %>%
+  group_by(hotel, is_canceled) %>%
+  summarise(count = n()) %>%
+  group_by(hotel) %>%
+  mutate(cancelation_rate = count / sum(count) * 100)
+
+ggplot(cancellation_rates, aes(x = hotel, y = cancelation_rate, fill = as.factor(is_canceled))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs( x = "Hotel Type",
+       y = "Cancellation Rate (%)",
+       fill = "Cancelled") +
+  scale_y_continuous(breaks = seq(0, 100, by = 20), limits = c(0, 100)) +
+  scale_fill_manual(values = c("#3489eb","#EB9634"))
+
+
+```
+
+-- zakljucak
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/cancellations_for_each_hotel_type.png")
+```
+### Percentage of repeated guests for each hotel
+
+-- opis
+
+```{r}
+repeated_guest_percentage <- hotel_bookings %>%
+  group_by(hotel, is_repeated_guest) %>%
+  summarise(count = n()) %>%
+  group_by(hotel) %>%
+  mutate(percentage = count / sum(count) * 100) %>%
+  filter(is_repeated_guest == 1)  
+
+ggplot(repeated_guest_percentage, aes(x = percentage, y = hotel, fill = as.factor(is_repeated_guest))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Percentage of repeated guests",
+       y = "Hotel") +
+  theme_minimal() +
+  scale_fill_manual(values = c("#3489eb"), guide = "none") +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)),
+            position = position_stack(vjust = 0.5)) 
+
+```
+
+--zakljucak
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/percentage_of_repeated_guests.png")
+```
+
+### Distribution of customers type that mostly make bookings
+
+-- opis
+```{r}
+customer_type_counts <- hotel_bookings %>%
+  group_by(customer_type) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100)
+
+label_threshold <- 3
+
+ggplot(customer_type_counts, aes(x = "", y = count, fill = customer_type)) +
+  geom_bar(stat = "identity", position = "fill", color = "white", width = 1) +
+  geom_text(data = filter(customer_type_counts, percentage >= label_threshold),
+            aes(label = sprintf("%.1f%%", percentage), y = count / 2),
+            position = position_fill(vjust = 0.5)) +
+  coord_polar("y") +
+  theme_void() +
+  theme(legend.position = "right") +
+  labs(fill = "Customer type") +
+  scale_fill_manual(values = c("#7f5700", "#0049a0", "#3489eb" ,"#EB9634"))
+
+
+```
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggsave("../figures/distribution_of_customers_type.png")
+```
+
+
+
+***
