@@ -18,11 +18,13 @@ library(maps)
 library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
+library(kableExtra)
 
 
 
 source("../R/preprocess_dataframe.R")
 source("../R/useful_functions.R")
+
 ```
 
 
@@ -53,7 +55,15 @@ hotel_bookings <- read_csv("../data/hotel_bookings_02.csv", show_col_types = FAL
 hotel_bookings$arrival_date_month <- custom_order_months(hotel_bookings$arrival_date_month)
 ```
 
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+total_bookings_per_country <- table(hotel_bookings$country)
 
+top_countries <- as.data.frame(total_bookings_per_country)
+top_countries <- top_countries[order(-top_countries$Freq), ]
+top_10_countries <- head(top_countries, 10)
+
+top_10_countries$Var1 <- factor(top_10_countries$Var1, levels = top_10_countries$Var1)
+```
 
 ## Opis podatkovnog skupa
 
@@ -102,7 +112,7 @@ Svaka rezervacija hotela sadrži sljedeće informacije:
 - **reservation_status_date** - datum posljednje promjene statusa rezervacije
 
 
-
+\newpage
 
 
 # Eksploratorna analiza podataka
@@ -134,7 +144,7 @@ ggsave("../figures/arrivals_per_month.png")
 Iz grafa možemo izčitati da je najveći broj rezervacija hotela u ljetnim mjesecima, posebno u srpnju i kolovozu. Najmanji broj rezervacija je u prosincu i siječnju, što je i očekivano, s obzirom da je to najhladniji period godine u Europi.
 
 
-### Prosječan broj noćenja po mjesecima
+## Prosječan broj noćenja po mjesecima
 
 Analizom podataka o prosječnom boravku gostiju po mjesecima dobivamo uvid u to koliko su gosti ostajali u hotelima tijekom godine. Istražiti ćemo i da li postoji razlika u prosječnom boravku gostiju u ljetnim i zimskim mjesecima.
 
@@ -143,7 +153,9 @@ avg_stay_per_month <- hotel_bookings %>%
   group_by(arrival_date_month) %>%
   summarise(average_stay = mean(stays_in_week_nights + stays_in_weekend_nights)) %>% 
   arrange(average_stay)
+```
 
+```{r echo=FALSE, warning = FALSE, message = FALSE}
 ggplot(avg_stay_per_month, aes(x = average_stay, y = arrival_date_month)) + 
   geom_col(fill = "#3489eb", alpha = 0.7) +
   geom_text(aes(label =round(average_stay, 2)), hjust = -0.5, size = 3) +
@@ -159,7 +171,7 @@ Možemo primjetiti da su gosti najduže boravili u hotelima tijekom ljetnih mjes
 
 
 
-### Prihod po mjesecima
+## Prihod po mjesecima
 
 Koristit ćemo slične filtere kao i do sada kako bismo izračunali mjesečni prihod (po hotelu). Očekujemo sličan rezultat prošlim analizama, s obzirom da je prihod direktno povezan s brojem rezervacija i brojem noćenja.
 
@@ -191,9 +203,123 @@ ggsave("../figures/revenue_by_month.png")
 ```
 
 Uočavamo postepeni rast mjesečnog prihoda tijekom godine, s najvišim prihodom evidentnim u ljetnim mjesecima.
+\newpage
+
+## Promjene ADR s različitim faktorima
+
+ADR (Average Daily Rate) predstavlja prosječnu cijenu sobe po noći. U ovom dijelu analizirat ćemo kako se mijenja ADR s različitim faktorima, kao što su tip hotela, država i tržišni segment. 
+
+### Usporedba ADR i tip hotela
 
 
-### Top 10 zemalja iz kojih dolaze gosti - podrijetla posjetitelja
+Interesira nas razlika u prosječnoj dnevnoj stopi (ADR) između gradskih i ljetovališnih hotela.
+
+```{r warning = FALSE, message = FALSE}
+
+ggplot(hotel_bookings, aes(x = hotel, y = adr, fill = hotel)) +
+  geom_boxplot(outlier.shape = NA) +
+  labs(x = NULL, y = "ADR / €") +
+  theme_minimal() +
+  theme(legend.position = "none") + 
+  ylim(0,300)
+
+
+```
+
+Iz ovog boxplota možemo vidjeti da je medijan cijene sobe u gradskom hotelu (City Hotel) viša nego u ljetovališnom hotelu (Resort Hotel). Ljudi koji odsjedaju u gradskom hotelu u prosjeku izdvajaju više za sobu nego ljudi koji borave u ljetovališnom hotelu. Međutim, postoji veći raspon cijena u ljetovališnom hotelu, što znači da postoje i skuplje i jeftinije sobe u ljetovališnom hotelu nego u gradskom hotelu.
+
+\newpage
+
+### Usporedba ADR i zemlje podrijetla
+
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+
+
+ggplot(subset(hotel_bookings, country %in% top_10_countries$Var1), 
+       aes(x = country, y = adr, fill = country)) +
+  geom_boxplot(outlier.shape = NA) +
+  labs(x = "Država", y = "ADR / €") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ylim(0,300)
+```
+
+Vidimo da je medijan cijene sobe najviša za goste iz Italije, dok je najniža za goste iz Portugala. Gosti iz Španjolske imaju najveći raspon cijena.
+
+\newpage
+
+### Usporedba ADR i tržišnog segmenta
+
+```{r warning = FALSE, message = FALSE}
+
+filtered_data <- hotel_bookings %>%
+  filter((market_segment %in% c("Aviation","Corporate","Direct","Groups", "Offline TA/TO","Online TA")))
+
+ggplot(filtered_data, aes(x = market_segment, y = adr, fill = market_segment)) +
+  geom_bar(stat = "summary", fun = "median", position = "dodge", color = "black") +
+  geom_errorbar(
+    stat = "summary", fun.min = function(x) quantile(x, 0.25),
+    fun = function(x) quantile(x, 0.75), position = "dodge", width = 0.2
+  ) +
+  labs(x = NULL, y = "ADR / €") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ylim(0, 200)
+```
+
+Najjeftinije sobe su za goste koji su došli s firmama, dok su najskuplje sobe za goste koji su došli preko online turističkih agencija.
+
+
+\newpage
+
+
+## Analiza značajke lead_time po mjesecu dolaska
+
+Značajka lead_time predstavlja broj dana između datuma rezervacije i datuma dolaska.
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+ggplot(hotel_bookings, aes(x = arrival_date_month, y = lead_time)) +
+  geom_boxplot(fill = "#3489eb", color = "white") +
+  labs(x = "Month of Arrival", y = "Lead Time (days)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Uočavamo da je medijan broja dana između rezervacije i dolaska najveći u srpnju i kolovozu, što znači da ljudi unaprijed rezerviraju svoje ljetne odmore. Medijan je najniži u studenom. U zimskim mjesecima ljudi rezerviraju svoje odmore u kraćem vremenskom razdoblju.
+
+### Korelacija između otkazivanja i 3 potencijalna faktora
+
+Tablica nam prikazuje potencijalne razloge zbog kojih ljudi otkazuju svoje rezervacije. 
+Duže vrijeme između rezervacije i datuma dolaska, vrijeme provedeno na listi čekanja te informacija da je osoba već otkazala rezervaciju vodi zaključku da će osoba otkazati svoju rezervaciju.
+
+Zanimljivo je primijetiti da je gotovo 6000 osoba koje su prethodno otkazale rezervaciju otkazalo i njihovu trenutnu rezervaciju.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+temp_df <- hotel_bookings[ , c("is_canceled", 
+                               "previous_cancellations", 
+                               "lead_time" , "days_in_waiting_list")]
+temp_df$has_canceled_before <- ifelse(temp_df$previous_cancellations > 0, TRUE, FALSE)
+
+result_table <- temp_df %>%
+  group_by(is_canceled) %>%
+  summarise(
+    avg_lead_time = mean(lead_time),
+    avg_waiting_time = mean(days_in_waiting_list),
+    count_previous_canceled = sum(has_canceled_before)
+)
+```
+
+\newpage
+
+
+```{r}
+kable(result_table, format = "latex", caption = "Correlation Table", ) %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(1:ncol(result_table), background = "white")
+```
+
+## Top 10 zemalja iz kojih dolaze gosti - podrijetla posjetitelja
 
 U ovom dijelu istražit ćemo podrijetlo gostiju, odnosno iz kojih zemalja dolaze. S obzirom da se hoteli nalaze u Portugalu, očekujemo da će većina gostiju biti iz Europe.
 Provedbom ove analize možemo dobiti uvid u to koliko je hotelima važno da se fokusiraju na određene zemlje, odnosno da li je potrebno ulagati u marketing u određenim zemljama.
@@ -202,7 +328,7 @@ Koristit ćemo funkciju table() kako bismo izračunali broj rezervacija po zemlj
 
 
 
-```{r}
+```{r warning = FALSE, message = FALSE}
 total_bookings_per_country <- table(hotel_bookings$country)
 
 top_countries <- as.data.frame(total_bookings_per_country)
@@ -210,7 +336,9 @@ top_countries <- top_countries[order(-top_countries$Freq), ]
 top_10_countries <- head(top_countries, 10)
 
 top_10_countries$Var1 <- factor(top_10_countries$Var1, levels = top_10_countries$Var1)
+```
 
+```{r echo=FALSE, warning = FALSE, message = FALSE}
 ggplot(top_10_countries, aes(x = Var1, y = Freq, fill = Var1)) +
   geom_bar(stat = "identity") +
   labs(x = "Country",
@@ -227,7 +355,7 @@ ggsave("../figures/top_10_countries_with_highest_bookings.png")
 
 Utvrdili smo da je najveći broj gostiju iz Portugala, što je i očekivano s obzirom da se hoteli nalaze u Portugalu. Zatim slijede gosti iz Velike Britanije, Francuske, Španjolske i Njemačke. Ove zemlje su također u blizini Portugala, što je vjerojatno razlog zašto je broj gostiju iz ovih zemalja visok.
 
-### Karta svijeta s ukupnim brojem gostiju
+## Karta svijeta s ukupnim brojem gostiju
 
 Na ovom grafu prikazat ćemo raspodjelu broja gostiju u hotelima na karti svijeta. Podaci su grupirani prema zemljama, a boje na karti označavaju ukupan broj gostiju (odrasli + djeca + bebe). Što je boja intezivnija broj gostiju je veći.
 
@@ -270,11 +398,11 @@ ggsave("../figures/heatmap_of_the_world_with_guest_count.png")
 
 Kao što vidimo najintezivnija crvena boja je u Portugalu i okolnim zemljama što znači da najveći broj gostiju dolazi iz tog područja kao što smo već i ranije zaključili. Kod zemalja Afrike boja je žuta ili čak siva što znači da od tamo dolazi najmanje gostiju. Sva siva područja označavaju zemlje iz kojih hoteli još nisu imali goste.
 
-### Trend odsjedanja za svaki tip hotela
+## Trend odsjedanja za svaki tip hotela
 
 Analizom podataka o broju noćenja dobivamo uvid u to koliko su noći gosti boravili u kojem hotelu. Ovaj graf pruža pregled raspodjele broja noćenja u hotelima za određene duljine boravka.
 
-```{r}
+```{r echo=FALSE, warning = FALSE, message = FALSE}
 filtered_data <- hotel_bookings %>%
   filter(stays_in_week_nights %in% c(1,3,4,5,6,7,8))
 
@@ -294,11 +422,11 @@ Utvrdili smo da najviše odsjedanja na jednu noć ima u gradskom hotelu što je 
 ggsave("../figures/duration_trend_for_each_hotel_type.png")
 ```
 
-### Postotci otkazivanja po tipu hotela
+## Postotci otkazivanja po tipu hotela
 
 Na ovom grafu prikazat ćemo stope otkazivanja. Podaci su grupirani po tipu hotela, a zatim su izračunate stope otkazivanja u postotcima.
 
-```{r}
+```{r warning = FALSE, message = FALSE}
 
 cancellation_rates <- hotel_bookings %>%
   group_by(hotel, is_canceled) %>%
@@ -323,11 +451,11 @@ Kao što možemo vidjeti u gradskom hotelu nije neka prevelika razlika u stopama
 ggsave("../figures/cancellations_for_each_hotel_type.png")
 ```
 
-### Postotak ponovljenih gostiju po hotelu
+## Postotak ponovljenih gostiju po hotelu
 
 Ovdje želimo prikazati postotak ponovljenih gostiju. Podaci su grupirani prema tipu hotela, a zatim su izračunati postotci gostiju koji su odsjedali u hotelu više puta.
 
-```{r}
+```{r warning = FALSE, message = FALSE}
 repeated_guest_percentage <- hotel_bookings %>%
   group_by(hotel, is_repeated_guest) %>%
   summarise(count = n()) %>%
@@ -351,7 +479,7 @@ Možemo zaključiti da je veći postotak ponovljenih gostiju u hotelu u resortu 
 ggsave("../figures/percentage_of_repeated_guests.png")
 ```
 
-### Distribucija tipova gostiju
+## Distribucija tipova gostiju
 
 Želimo saznati kakva je podjela različitih tipova gostiju u hotelima. Podaci su grupirani prema tipu gosta, a zatim su izračuanti postotci za svaki tip.
 
