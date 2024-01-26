@@ -1,12 +1,12 @@
 ---
 title: "HotelBookingsDatasetReport"
-author: 
-  - "Marko Dananić"
-  - "Dario Huić" 
-  - "Matija Alojz Stuhne^[JMBAG: 0036540079, e-mail: ms54007@fer.hr]"
+author:
+- Marko Dananić
+- Dario Huić
+- "Matija Alojz Stuhne^[JMBAG: 0036540079, e-mail: ms54007@fer.hr]"
 date: "`r Sys.Date()`"
 output:
-  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -19,7 +19,6 @@ library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(kableExtra)
-
 
 
 source("../R/preprocess_dataframe.R")
@@ -122,6 +121,83 @@ ggplot(revenue_per_month, aes(x = arrival_date_year,
 ggsave("../figures/revenue_by_month.png")
 
 ```
+
+### ADR variation with different factors
+
+ADR (Average Daily Rate) represents the average price a guest pays per room per night in a hotel.
+
+#### ADR and hotel type
+
+We are interested in the difference in ADR between city and resort hotels.
+
+```{r}
+
+ggplot(hotel_bookings, aes(x = hotel, y = adr, fill = hotel)) +
+  geom_boxplot(outlier.shape = NA) +
+  labs(x = NULL, y = "ADR / €") +
+  theme_minimal() +
+  theme(legend.position = "none") + 
+  ylim(0,300)
+
+
+```
+From this boxplot we can see that the median price for a room in a city hotel is higher than in a resort hotel. That means people that are going in the City Hotel are willing to pay more for a room than people that are going in the Resort Hotel. But there is a bigger spread of prices in the Resort Hotel, which means that there are more expensive rooms in the Resort Hotel than in the City Hotel. Also there exist more cheaper rooms in the Resort Hotel than in the City Hotel.
+
+### ADR and country
+
+Let's see how the distribution of ADR and countries with most bookings look.
+
+
+```{r}
+
+total_bookings_per_country <- table(hotel_bookings$country)
+
+top_countries <- as.data.frame(total_bookings_per_country)
+top_countries <- top_countries[order(-top_countries$Freq), ]
+top_10_countries <- head(top_countries, 10)
+
+top_10_countries$Var1 <- factor(top_10_countries$Var1, levels = top_10_countries$Var1)
+
+ggplot(subset(hotel_bookings, country %in% top_10_countries$Var1), 
+       aes(x = country, y = adr, fill = country)) +
+  geom_boxplot(outlier.shape = NA) +
+  labs(x = "Country", y = "ADR / €") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ylim(0,300)
+```
+### ADR and market segment
+
+Let's see how the distribution of ADR and market segment looks.
+
+```{r}
+ggplot(hotel_bookings, aes(x = market_segment, y = adr, fill = market_segment)) +
+  geom_bar(stat = "summary", fun = "median", position = "dodge", color = "black") +
+  geom_errorbar(
+    stat = "summary", fun.min = function(x) quantile(x, 0.25),
+    fun = function(x) quantile(x, 0.75), position = "dodge", width = 0.2
+  ) +
+  labs(x = NULL, y = "ADR / €") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ylim(0, 300)
+```
+### Lead time analysis
+
+```{r}
+ggplot(hotel_bookings, aes(x = arrival_date_month, y = lead_time)) +
+  geom_boxplot(fill = "#3489eb", color = "white") +
+  labs(x = "Month of Arrival", y = "Lead Time (days)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+```
+
+
+
+
 ### Correlation between cancelations and 3 potential factors of it
 
 The table shows us potential reasons for people cancelling their reservations.
@@ -144,7 +220,7 @@ result_table <- temp_df %>%
 )
 
 # Print the resulting table
-kable(result_table, format = "html", caption = "Correlation Table", ) %>% 
+kable(result_table, format = "latex", caption = "Correlation Table", ) %>% 
   kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
   column_spec(1:ncol(result_table), background = "white")
 ```
