@@ -14,6 +14,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
+library(maps)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+
 
 source("../R/preprocess_dataframe.R")
 source("../R/useful_functions.R")
@@ -145,6 +151,43 @@ ggplot(top_10_countries, aes(x = Var1, y = Freq, fill = Var1)) +
 ggsave("../figures/top_10_countries_with_highest_bookings.png")
 ```
 
+
+
+### Heatmap of the wolrd with total guest count
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+hotel_bookings_agg <- hotel_bookings %>%
+  group_by(country) %>%
+  summarise(total_guests = sum(adults + children + babies, na.rm = TRUE))
+
+hotel_bookings_map <- left_join(world, hotel_bookings_agg, by = c("iso_a3" = "country"))
+
+ggplot(hotel_bookings_map) +
+  geom_sf(aes(fill = total_guests), color = "white") +
+  scale_fill_gradient(
+    low = "yellow",
+    high = "red",
+    na.value = "grey90",
+    trans = "log",
+    breaks = c(0, 10, 1000, 5000, 10000, 20000, 25000),
+    labels = c("0", "0 - 10", "10 - 100", "100 - 500", "5,000 - 10,000", "10,000 - 25,000", "25,000+"),
+    guide = guide_legend(title = "Total Number of Guests")
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.border = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  coord_sf(xlim = c(-180, 180), ylim = c(-55, 90))
+ggsave("../figures/heatmap_of_the_world_with_guest_count.png")
+```
+
+
 ### Duration trend for each hotel type
 
 ```{r}
@@ -225,9 +268,6 @@ ggplot(customer_type_counts, aes(x = "", y = count, fill = customer_type)) +
 
 ggsave("../figures/distribution_of_customers_type.png")
 ```
-
-
-
 
 
 
