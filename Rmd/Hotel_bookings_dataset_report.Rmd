@@ -18,6 +18,7 @@ library(maps)
 library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
+library(kableExtra)
 
 
 
@@ -113,7 +114,7 @@ revenue_per_month <- hotel_bookings %>%
 ggplot(revenue_per_month, aes(x = arrival_date_year,
                               y = est_revenue, fill = hotel)) +
          geom_bar(stat = "identity", position = "dodge") +
-         labs(x = NULL, y = "revenue / $") +
+         labs(x = NULL, y = "revenue / €") +
          facet_wrap(. ~ arrival_date_month) +
          theme(axis.text.x = element_text(angle = 45)) +
          scale_fill_manual(values = c("#3489eb","#EB9634"))
@@ -121,6 +122,33 @@ ggplot(revenue_per_month, aes(x = arrival_date_year,
 ggsave("../figures/revenue_by_month.png")
 
 ```
+### Correlation between cancelations and 3 potential factors of it
+
+The table shows us potential reasons for people cancelling their reservations.
+As we can see, longer lead time, waiting list time and information that the person has cancelled before all lead to a conclusion that the person will cancel it's reservation.
+
+It's interesting to see that almost 6000 people who have cancelled their reservations before, canceled their current reservation.
+
+```{r}
+temp_df <- hotel_bookings[ , c("is_canceled", 
+                               "previous_cancellations", 
+                               "lead_time" , "days_in_waiting_list")]
+temp_df$has_canceled_before <- ifelse(temp_df$previous_cancellations > 0, TRUE, FALSE)
+
+result_table <- temp_df %>%
+  group_by(is_canceled) %>%
+  summarise(
+    avg_lead_time = mean(lead_time),
+    avg_waiting_time = mean(days_in_waiting_list),
+    count_previous_canceled = sum(has_canceled_before)
+)
+
+# Print the resulting table
+kable(result_table, format = "html", caption = "Correlation Table", ) %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(1:ncol(result_table), background = "white")
+```
+
 
 ### Top 10 Countries with Highest bookings
 
